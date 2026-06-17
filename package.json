@@ -1,0 +1,21 @@
+{
+  "name": "learningdemo",
+  "version": "1.0.0",
+  "description": "Node.js + Express + PostgreSQL demo app for DevOps interview assignment",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "devops",
+    "express",
+    "postgresql",
+    "docker"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}

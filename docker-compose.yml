@@ -1,0 +1,43 @@
+# docker-compose.yml
+# Brings up the app + PostgreSQL together with one command:
+#   docker compose up --build
+#
+# This demonstrates the typical DevOps pattern of running an application
+# alongside its dependencies in isolated, networked containers.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: learningdemo
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # init.sql runs automatically the first time the DB is created
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d learningdemo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      DB_HOST: db          # service name above = hostname on the compose network
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: learningdemo
+    depends_on:
+      db:
+        condition: service_healthy   # wait until the DB passes its healthcheck
+
+volumes:
+  db_data:

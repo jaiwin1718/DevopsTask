@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Users - learningdemo</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="card wide">
+    <h1>Users</h1>
+
+    <% if (users.length === 0) { %>
+      <p class="msg">No users yet. <a href="/register">Register one</a>.</p>
+    <% } else { %>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Username</th><th>Email</th><th>Created</th></tr>
+        </thead>
+        <tbody>
+          <% users.forEach(function (u) { %>
+            <tr>
+              <td><%= u.id %></td>
+              <td><%= u.username %></td>
+              <td><%= u.email %></td>
+              <td><%= u.created_at %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <p class="links">
+      <a href="/register">Register</a> ·
+      <a href="/login">Login</a>
+    </p>
+  </div>
+</body>
+</html>
