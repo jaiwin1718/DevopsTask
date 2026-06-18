@@ -1,0 +1,84 @@
+# ── Service ───────────────────────────────────────────────────────────────────
+# ClusterIP = internal only. Reached from laptop via kubectl port-forward.
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "learningdemo.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: app
+  ports:
+    - port: {{ .Values.app.port }}
+      targetPort: {{ .Values.app.port }}
+---
+# ── Deployment ────────────────────────────────────────────────────────────────
+# WHY Deployment (not StatefulSet): the app is stateless — any replica can
+# handle any request. Deployments give us free rolling updates and rollback.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "learningdemo.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.app.replicas }}
+  selector:
+    matchLabels:
+      app: app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # never drop below desired count during a rollout
+      maxSurge: 1         # allow one extra pod during transition
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: app
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.app.port }}
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef: { name: db-secret, key: POSTGRES_USER }
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: db-secret, key: POSTGRES_PASSWORD }
+
+          # ── PROBES (the reliability feature) ────────────────────────────────
+          # startupProbe: wait up to 60s for a cold start before judging
+          startupProbe:
+            httpGet: { path: /health, port: {{ .Values.app.port }} }
+            periodSeconds: 3
+            failureThreshold: 20
+
+          # readinessProbe: checks /health which queries the DB.
+          # Fail = pod removed from Service endpoints (no traffic, no restart).
+          readinessProbe:
+            httpGet: { path: /health, port: {{ .Values.app.port }} }
+            periodSeconds: 5
+            failureThreshold: 3
+
+          # livenessProbe: TCP only — does NOT check the DB.
+          # If liveness checked the DB, a DB blip would restart ALL app pods
+          # at once (restart storm), making the outage worse.
+          livenessProbe:
+            tcpSocket: { port: {{ .Values.app.port }} }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+
+          resources:
+            {{- toYaml .Values.app.resources | nindent 12 }}

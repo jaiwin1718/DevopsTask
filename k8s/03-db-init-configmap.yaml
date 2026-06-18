@@ -1,0 +1,19 @@
+# ConfigMap holding the SQL init script.
+# We mount this into the Postgres container at /docker-entrypoint-initdb.d/,
+# the directory the official postgres image runs automatically on first start
+# (only when the data volume is empty). Same trick as docker-compose, but the
+# file now travels with the cluster instead of being a local bind mount.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init
+  namespace: learningdemo
+data:
+  init.sql: |
+    CREATE TABLE IF NOT EXISTS users (
+      id          SERIAL PRIMARY KEY,
+      username    VARCHAR(50)  NOT NULL UNIQUE,
+      email       VARCHAR(255) NOT NULL UNIQUE,
+      password    VARCHAR(255) NOT NULL,
+      created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+    );

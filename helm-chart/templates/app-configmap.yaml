@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "learningdemo.labels" . | nindent 4 }}
+data:
+  # "db" is the name of the headless Service — Kubernetes DNS resolves it
+  # to the Postgres pod IP automatically. This is how pods talk to each other.
+  DB_HOST: "db"
+  DB_PORT: "5432"
+  PORT: {{ .Values.app.port | quote }}
+  DB_NAME: {{ .Values.credentials.postgresDb | quote }}

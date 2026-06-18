@@ -1,0 +1,8 @@
+apiVersion: v2
+name: learningdemo
+description: Node.js + Express + PostgreSQL demo app (DevOps interview assignment)
+type: application
+# Chart version — bump this when you change the chart structure itself
+version: 0.1.0
+# App version — the version of the application code (not the chart)
+appVersion: "1.0.0"

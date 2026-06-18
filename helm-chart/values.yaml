@@ -1,0 +1,45 @@
+# values.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# This is the ONLY file you need to change between environments.
+# Dev / staging / prod can each have their own values file and the templates
+# stay identical. That's the core value of Helm.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Application ──────────────────────────────────────────────────────────────
+app:
+  image:
+    repository: jaiwin1817/learningdemo
+    # ArgoCD + CI will update this tag automatically on every push to main
+    tag: latest
+    # IfNotPresent = use cached image if it's already on the node (good for local kind)
+    # Always = always pull (good for :latest in production)
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 3000
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "250m"
+      memory: "128Mi"
+
+# ── Database (Postgres) ───────────────────────────────────────────────────────
+db:
+  image:
+    repository: postgres
+    tag: "16-alpine"
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+# ── Credentials (override these per environment — ideally via a sealed secret) ─
+credentials:
+  postgresUser: postgres
+  postgresPassword: postgres
+  postgresDb: learningdemo

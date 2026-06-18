@@ -1,0 +1,6 @@
+# A namespace keeps all the demo's resources grouped and isolated.
+# You can wipe the whole stack with: kubectl delete namespace learningdemo
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: learningdemo

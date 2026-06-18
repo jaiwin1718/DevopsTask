@@ -1,0 +1,14 @@
+# ConfigMap: NON-secret configuration for the app.
+# - DB_HOST is "db" because that is the name of the Postgres Service below.
+#   Kubernetes runs an internal DNS; a Service named "db" in this namespace
+#   is reachable at "db" (or fully: db.learningdemo.svc.cluster.local).
+# - This is the single value we will deliberately break in the failure demo.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: learningdemo
+data:
+  DB_HOST: "db"
+  DB_PORT: "5432"
+  PORT: "3000"

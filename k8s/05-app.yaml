@@ -1,0 +1,104 @@
+# ---------------------------------------------------------------------------
+# Service for the app (ClusterIP = internal-only).
+# We reach it from the laptop with: kubectl port-forward svc/app 3000:3000
+# ClusterIP is the simplest choice for kind and keeps the demo focused on
+# Kubernetes internals rather than ingress plumbing.
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  namespace: learningdemo
+spec:
+  type: ClusterIP
+  selector:
+    app: app
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+# ---------------------------------------------------------------------------
+# Deployment for the Node app.
+# Deployment (not StatefulSet) because the app is STATELESS — any replica is
+# interchangeable, and we want easy rolling updates + rollbacks.
+# ---------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: learningdemo
+spec:
+  replicas: 2                       # 2 replicas => rolling updates have somewhere to send traffic
+  selector:
+    matchLabels:
+      app: app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0             # never drop below desired during a rollout
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: app
+          image: jaiwin1817/learningdemo:latest
+          # CI also tags with the git SHA; the deploy job swaps this to that
+          # immutable tag so each release is traceable and rollback-able.
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: app-config     # DB_HOST, DB_PORT, PORT
+          env:
+            # Map the Secret keys to the names the app actually reads.
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef: { name: db-secret, key: POSTGRES_USER }
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: db-secret, key: POSTGRES_PASSWORD }
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef: { name: db-secret, key: POSTGRES_DB }
+
+          # ---- THE RELIABILITY FEATURE: probes done correctly ----
+          #
+          # startupProbe: gives a cold-starting pod up to 60s (20 x 3s) for the
+          #   DB to become reachable before liveness/readiness start judging it.
+          #   Prevents a slow start from being killed as "dead".
+          startupProbe:
+            httpGet: { path: /health, port: 3000 }
+            periodSeconds: 3
+            failureThreshold: 20
+
+          # readinessProbe: "should this pod receive traffic?"
+          #   /health queries the DB, so if the DB is unreachable the pod is
+          #   pulled OUT of the Service endpoints — users never hit a broken pod.
+          #   The pod is NOT restarted; it just waits to recover.
+          readinessProbe:
+            httpGet: { path: /health, port: 3000 }
+            periodSeconds: 5
+            failureThreshold: 3
+
+          # livenessProbe: "is the process itself dead and in need of a restart?"
+          #   KEY DESIGN POINT: liveness uses a plain TCP check, NOT /health.
+          #   If liveness also checked the DB, a brief DB outage would restart
+          #   EVERY app pod at once (a restart storm) and make the outage worse.
+          #   Liveness must depend only on the process; readiness depends on deps.
+          livenessProbe:
+            tcpSocket: { port: 3000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"

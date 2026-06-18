@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: CI/CD - Build, Push, Deploy
 
 on:
   push:
@@ -6,12 +6,16 @@ on:
       - main
 
 jobs:
-  docker:
-
+  # ---------------------------------------------------------------------------
+  # JOB 1 (CI): build the image and push it to Docker Hub.
+  # Runs on GitHub's cloud runner. We push TWO tags:
+  #   - :latest          -> convenient "newest" pointer
+  #   - :<git-sha>        -> immutable, traceable, and what we actually deploy.
+  # Deploying by SHA is what makes rollouts meaningful and rollback possible.
+  # ---------------------------------------------------------------------------
+  build:
     runs-on: ubuntu-latest
-
     steps:
-
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -29,4 +33,41 @@ jobs:
         with:
           context: .
           push: true
-          tags: jaiwin1817/learningdemo:latest
+          tags: |
+            jaiwin1817/learningdemo:latest
+            jaiwin1817/learningdemo:${{ github.sha }}
+
+  # ---------------------------------------------------------------------------
+  # JOB 2 (CD): deploy to the local kind cluster.
+  #
+  # WHY runs-on: self-hosted ?
+  #   kind runs on YOUR laptop. GitHub's cloud runners cannot reach a cluster
+  #   on your private machine. A self-hosted runner installed on the laptop
+  #   already has kubectl + the kind-fluid-ai context, so it CAN talk to the
+  #   cluster. This is the honest way to auto-deploy to a local cluster.
+  #   (Setup once: GitHub repo > Settings > Actions > Runners > New self-hosted
+  #    runner, then run ./run.cmd on the laptop.)
+  #
+  # needs: build  -> only deploy if the image was built and pushed first.
+  # ---------------------------------------------------------------------------
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Apply manifests (idempotent)
+        run: kubectl --context kind-fluid-ai apply -f k8s/
+
+      - name: Roll out the image built in this run
+        run: |
+          kubectl --context kind-fluid-ai -n learningdemo set image \
+            deployment/app app=jaiwin1817/learningdemo:${{ github.sha }}
+
+      - name: Wait for rollout to finish
+        # If the new pods never become Ready, this fails the pipeline within
+        # the timeout instead of leaving a half-broken deploy unnoticed.
+        run: |
+          kubectl --context kind-fluid-ai -n learningdemo \
+            rollout status deployment/app --timeout=120s
