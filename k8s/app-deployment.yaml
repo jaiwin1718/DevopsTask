@@ -18,6 +18,7 @@ spec:
       containers:
         - name: signup-app
           image: ghcr.io/jaiwin1718/devopstask:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
           env:

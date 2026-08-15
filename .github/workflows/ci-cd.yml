@@ -102,9 +102,9 @@ jobs:
           kubectl apply -f k8s/app-deployment.yaml
 
       - name: Update deployment image
-        run: kubectl set image deployment/signup-app signup-app=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} -n signup-app
+        run: kubectl set image deployment/signup-app signup-app=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest -n signup-app
 
-      - name: Restart deployment to pick up new secret
+      - name: Restart deployment to pick up new image
         run: kubectl rollout restart deployment/signup-app -n signup-app
 
       - name: Wait for rollout
