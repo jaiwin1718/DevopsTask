@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository_owner }}/devopstask
 
 jobs:
   test:
@@ -104,8 +104,14 @@ jobs:
       - name: Update deployment image
         run: kubectl set image deployment/signup-app signup-app=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} -n signup-app
 
+      - name: Restart deployment to pick up new secret
+        run: kubectl rollout restart deployment/signup-app -n signup-app
+
       - name: Wait for rollout
-        run: kubectl rollout status deployment/signup-app -n signup-app --timeout=120s
+        run: |
+          kubectl get pods -n signup-app
+          kubectl describe pods -l app=signup-app -n signup-app | Select-String -Pattern "State|Reason|Image|Error|Pull|Warning|Failed"
+          kubectl rollout status deployment/signup-app -n signup-app --timeout=180s
 
       - name: Verify deployment
         run: |
