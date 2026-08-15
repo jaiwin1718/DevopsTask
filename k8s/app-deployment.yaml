@@ -13,6 +13,8 @@ spec:
       labels:
         app: signup-app
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: signup-app
           image: ghcr.io/jaiwin1718/devopstask:latest
