@@ -96,10 +96,7 @@ jobs:
           kubectl apply -f k8s/app-deployment.yaml
 
       - name: Update deployment image
-        run: |
-          kubectl set image deployment/signup-app \
-            signup-app=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -n signup-app
+        run: kubectl set image deployment/signup-app signup-app=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} -n signup-app
 
       - name: Wait for rollout
         run: kubectl rollout status deployment/signup-app -n signup-app --timeout=120s
